@@ -1,0 +1,157 @@
+// Connect to MongoDB
+const mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost:27017/project_database', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+// User Schema
+const UserSchema = new mongoose.Schema({
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  email: { type: String, required: true },
+  password: { type: String, required: true },
+  accountType: { type: String, enum: ['Admin', 'Instructor', 'Student'], required: true },
+  active: { type: Boolean, default: true },
+  approved: { type: Boolean, default: true },
+  additionalDetails: { type: mongoose.Schema.Types.ObjectId, ref: 'Profile' },
+  courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
+  image: { type: String, required: true }
+});
+const User = mongoose.model('User', UserSchema);
+
+// OTP Schema
+const OTPSchema = new mongoose.Schema({
+  email: { type: String, required: true },
+  otp: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now, expires: 300 }
+});
+const OTP = mongoose.model('OTP', OTPSchema);
+
+// Category Schema
+const CategorySchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: { type: String },
+  courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }]
+});
+const Category = mongoose.model('Category', CategorySchema);
+
+// Course Schema
+const CourseSchema = new mongoose.Schema({
+  courseName: { type: String, required: true },
+  courseDescription: { type: String },
+  instructor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  whatYouWillLearn: { type: String },
+  courseContent: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Section' }],
+  ratingAndReviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'RatingAndReview' }],
+  price: { type: Number, required: true },
+  thumbnail: { type: String },
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
+  tag: [{ type: String, required: true }],
+  studentsEnrolled: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+});
+const Course = mongoose.model('Course', CourseSchema);
+
+// Course Progress Schema
+const CourseProgressSchema = new mongoose.Schema({
+  courseID: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  completedVideos: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSection' }]
+});
+const CourseProgress = mongoose.model('CourseProgress', CourseProgressSchema);
+
+// Profile Schema
+const ProfileSchema = new mongoose.Schema({
+  gender: { type: String },
+  dateOfBirth: { type: String },
+  about: { type: String },
+  contactNumber: { type: Number }
+});
+const Profile = mongoose.model('Profile', ProfileSchema);
+
+// Rating and Review Schema
+const RatingAndReviewSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  rating: { type: String, required: true },
+  review: { type: String },
+  course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' }
+});
+const RatingAndReview = mongoose.model('RatingAndReview', RatingAndReviewSchema);
+
+// Section Schema
+const SectionSchema = new mongoose.Schema({
+  sectionName: { type: String, required: true },
+  subSection: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSection' }]
+});
+const Section = mongoose.model('Section', SectionSchema);
+
+// Sub-Section Schema
+const SubSectionSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  timeDuration: { type: String },
+  description: { type: String },
+  videoUrl: { type: String }
+});
+const SubSection = mongoose.model('SubSection', SubSectionSchema);
+
+console.log("Database and schemas set up successfully");
+
+
+db.users.find().forEach(user => {
+  const profile = db.profiles.findOne();
+  db.users.updateOne({ _id: user._id }, { $set: { additionalDetails: profile._id } });
+});
+
+// Link Courses with Categories
+db.courses.find().forEach(course => {
+  const category = db.categories.findOne();
+  db.courses.updateOne({ _id: course._id }, { $set: { category: category._id, status: "Unpublished" } });
+  db.categories.updateOne({ _id: category._id }, { $push: { courses: course._id } });
+});
+
+// Link Instructors to Courses
+db.users.find({ accountType: "Instructor" }).forEach(instructor => {
+  db.courses.find().forEach(course => {
+    db.courses.updateOne({ _id: course._id }, { $set: { instructor: instructor._id } });
+    db.users.updateOne({ _id: instructor._id }, { $push: { courses: course._id } });
+  });
+});
+
+// Link Students with Enrolled Courses
+db.users.find({ accountType: "Student" }).forEach(student => {
+  db.courses.find().forEach(course => {
+    db.users.updateOne({ _id: student._id }, { $push: { courses: course._id } });
+    db.courses.updateOne({ _id: course._id }, { $push: { studentsEnrolled: student._id } });
+  });
+});
+
+// Link Courses with Sections
+db.courses.find().forEach(course => {
+  db.sections.find().forEach(section => {
+    db.courses.updateOne({ _id: course._id }, { $push: { courseContent: section._id } });
+  });
+});
+
+// Link Sections with Subsections
+db.sections.find().forEach(section => {
+  db.subsections.find().forEach(subSection => {
+    db.sections.updateOne({ _id: section._id }, { $push: { subSection: subSection._id } });
+  });
+});
+
+// Link Users with Course Progress
+db.users.find({ accountType: "Student" }).forEach(student => {
+  db.courses.find().forEach(course => {
+    db.courseprogresses.insertOne({ courseID: course._id, userId: student._id, completedVideos: [] });
+  });
+});
+
+// Link Ratings and Reviews with Users and Courses
+db.ratingandreviews.find().forEach(review => {
+  const user = db.users.findOne();
+  const course = db.courses.findOne();
+  db.ratingandreviews.updateOne({ _id: review._id }, { $set: { user: user._id, course: course._id } });
+  db.courses.updateOne({ _id: course._id }, { $push: { ratingAndReviews: review._id } });
+});
+
+print("Relationships established successfully");

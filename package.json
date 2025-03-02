@@ -1,0 +1,24 @@
+{
+  "name": "study_notion",
+  "version": "1.0.0",
+  "description": "A MERN stack application for studying",
+  "main": "server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "node backend/server.js",
+    "frontend": "npm start --prefix frontend"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "express-fileupload": "^1.2.0",
+    "mongoose": "^5.10.9"
+  },
+  "devDependencies": {
+    "concurrently": "^5.3.0"
+  },
+  "author": "Your Name",
+  "license": "ISC"
+}
